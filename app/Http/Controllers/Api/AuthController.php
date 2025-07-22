@@ -13,28 +13,62 @@ class AuthController extends Controller
 {
     public function register(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-            'phone' => 'nullable|string|max:20',
-            'address' => 'nullable|string',
-            'city' => 'nullable|string|max:100',
-            'postal_code' => 'nullable|string|max:10',
-            'user_type' => 'required|in:demandeur,offreur',
-        ]);
+        try {
+            // Validation flexible selon les champs envoyés
+            $rules = [
+                'name' => 'required|string|max:255',
+                'email' => 'required|string|email|max:255|unique:users',
+                'password' => 'required|string|min:8',
+                'phone' => 'nullable|string|max:20',
+                'address' => 'nullable|string',
+                'city' => 'nullable|string|max:100',
+                'postal_code' => 'nullable|string|max:10',
+                'user_type' => 'required|in:demandeur,offreur',
+            ];
 
-        $validated['password'] = Hash::make($validated['password']);
+            // Si le frontend envoie confirmPassword, on l'utilise
+            if ($request->has('confirmPassword')) {
+                $rules['confirmPassword'] = 'required|string|min:8|same:password';
+            }
+            // Sinon si il envoie password_confirmation, on l'utilise
+            elseif ($request->has('password_confirmation')) {
+                $rules['password_confirmation'] = 'required|string|min:8|same:password';
+            }
 
-        $user = User::create($validated);
+            $validated = $request->validate($rules);
 
-        $token = $user->createToken('auth-token')->plainTextToken;
+            $validated['password'] = Hash::make($validated['password']);
+            
+            // Retirer les champs de confirmation avant de créer l'utilisateur
+            unset($validated['password_confirmation']);
+            unset($validated['confirmPassword']);
 
-        return response()->json([
-            'message' => 'Utilisateur créé avec succès',
-            'user' => $user,
-            'token' => $token
-        ], 201);
+            $user = User::create($validated);
+
+            $token = $user->createToken('auth-token')->plainTextToken;
+
+            return response()->json([
+                'message' => 'Utilisateur créé avec succès',
+                'user' => $user->fresh(),
+                'token' => $token
+            ], 201);
+            
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => 'Erreur de validation',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de l\'inscription', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'message' => 'Une erreur est survenue lors de l\'inscription',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
     }
 
     public function login(Request $request)

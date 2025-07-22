@@ -58,12 +58,21 @@ class User extends Authenticatable
     public function toArray()
     {
         $array = parent::toArray();
-        $array['user_type_label'] = match($this->user_type) {
-            'demandeur' => 'Demandeur',
-            'offreur' => 'Offreur',
-            'admin' => 'Administrateur',
-            default => $this->user_type
-        };
+        
+        switch($this->user_type) {
+            case 'demandeur':
+                $array['user_type_label'] = 'Demandeur';
+                break;
+            case 'offreur':
+                $array['user_type_label'] = 'Offreur';
+                break;
+            case 'admin':
+                $array['user_type_label'] = 'Administrateur';
+                break;
+            default:
+                $array['user_type_label'] = $this->user_type;
+        }
+        
         return $array;
     }
 }
