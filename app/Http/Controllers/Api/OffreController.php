@@ -12,33 +12,55 @@ class OffreController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Offre::active()->with('user:id,name');
+        try {
+            $query = Offre::query()
+                ->select('offres.*')
+                ->with(['user' => function($q) {
+                    $q->select('id', 'name');
+                }])
+                ->where('statut', 'active')
+                ->where(function ($q) {
+                    $q->whereNull('date_expiration')
+                        ->orWhere('date_expiration', '>', now());
+                });
 
-        // Filtres
-        if ($request->filled('search')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('titre', 'like', '%' . $request->search . '%')
-                    ->orWhere('description', 'like', '%' . $request->search . '%');
-            });
+            // Filtres
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('titre', 'like', '%' . $search . '%')
+                        ->orWhere('description', 'like', '%' . $search . '%');
+                });
+            }
+
+            if ($request->filled('categorie') && $request->categorie !== 'all') {
+                $query->where('categorie', $request->categorie);
+            }
+
+            if ($request->filled('localisation')) {
+                $query->where('localisation', 'like', '%' . $request->localisation . '%');
+            }
+
+            if ($request->filled('type_offre') && $request->type_offre !== 'all') {
+                $query->where('type_offre', $request->type_offre);
+            }
+
+            $offres = $query->orderBy('created_at', 'desc')
+                ->paginate($request->get('per_page', 12))
+                ->withQueryString();
+
+            return response()->json($offres);
+        } catch (\Exception $e) {
+            \Log::error('Erreur dans OffreController::index', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'message' => 'Une erreur est survenue lors de la récupération des offres',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
         }
-
-        if ($request->filled('categorie') && $request->categorie !== 'all') {
-            $query->where('categorie', $request->categorie);
-        }
-
-        if ($request->filled('localisation')) {
-            $query->where('localisation', 'like', '%' . $request->localisation . '%');
-        }
-
-        if ($request->filled('type_offre') && $request->type_offre !== 'all') {
-            $query->where('type_offre', $request->type_offre);
-        }
-
-        $offres = $query->latest()
-            ->paginate($request->get('per_page', 12))
-            ->withQueryString();
-
-        return response()->json($offres);
     }
 
     public function show(Offre $offre)
