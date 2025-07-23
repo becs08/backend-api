@@ -1,24 +1,22 @@
-*.log
-.DS_Store
-.env
-.env.backup
-.env.production
-.phpactor.json
-.phpunit.result.cache
-/.fleet
-/.idea
-/.nova
-/.phpunit.cache
-/.vscode
-/.zed
-/auth.json
+# Laravel
 /node_modules
 /public/build
 /public/hot
 /public/storage
 /storage/*.key
-/storage/pail
 /vendor
+.env                          # ← Ne jamais partager les vrais .env
+.env.backup
+.env.production
+.phpunit.result.cache
 Homestead.json
 Homestead.yaml
-Thumbs.db
+auth.json
+npm-debug.log
+yarn-error.log
+
+# Base de données
+database/database.sqlite      # ← Ne pas partager la DB avec données
+
+# Logs
+storage/logs/
