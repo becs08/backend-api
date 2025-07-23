@@ -51,7 +51,10 @@ class AuthController extends Controller
                 'message' => 'Utilisateur créé avec succès',
                 'user' => $user->fresh(),
                 'token' => $token
-            ], 201);
+            ], 201, [
+                'Content-Type' => 'application/json',
+                'Access-Control-Allow-Origin' => '*'
+            ]);
             
         } catch (ValidationException $e) {
             return response()->json([
@@ -73,27 +76,51 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
-        ]);
-
-        if (!Auth::attempt($request->only('email', 'password'))) {
-            throw ValidationException::withMessages([
-                'email' => ['Les informations de connexion sont incorrectes.'],
+        try {
+            $request->validate([
+                'email' => 'required|email',
+                'password' => 'required',
             ]);
+
+            if (!Auth::attempt($request->only('email', 'password'))) {
+                return response()->json([
+                    'message' => 'Les informations de connexion sont incorrectes.',
+                    'errors' => [
+                        'email' => ['Les informations de connexion sont incorrectes.']
+                    ]
+                ], 401);
+            }
+
+            $user = Auth::user();
+            $user->mettreAJourDerniereConnexion();
+
+            $token = $user->createToken('auth-token')->plainTextToken;
+
+            return response()->json([
+                'message' => 'Connexion réussie',
+                'user' => $user->fresh(),
+                'token' => $token
+            ], 200, [
+                'Content-Type' => 'application/json',
+                'Access-Control-Allow-Origin' => '*'
+            ]);
+            
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => 'Erreur de validation',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la connexion', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'message' => 'Une erreur est survenue lors de la connexion',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
         }
-
-        $user = Auth::user();
-        $user->mettreAJourDerniereConnexion();
-
-        $token = $user->createToken('auth-token')->plainTextToken;
-
-        return response()->json([
-            'message' => 'Connexion réussie',
-            'user' => $user,
-            'token' => $token
-        ]);
     }
 
     public function logout(Request $request)

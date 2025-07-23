@@ -59,18 +59,23 @@ class User extends Authenticatable
     {
         $array = parent::toArray();
         
-        switch($this->user_type) {
-            case 'demandeur':
-                $array['user_type_label'] = 'Demandeur';
-                break;
-            case 'offreur':
-                $array['user_type_label'] = 'Offreur';
-                break;
-            case 'admin':
-                $array['user_type_label'] = 'Administrateur';
-                break;
-            default:
-                $array['user_type_label'] = $this->user_type;
+        // S'assurer que user_type existe avant de l'utiliser
+        if (isset($this->user_type)) {
+            switch($this->user_type) {
+                case 'demandeur':
+                    $array['user_type_label'] = 'Demandeur';
+                    break;
+                case 'offreur':
+                    $array['user_type_label'] = 'Offreur';
+                    break;
+                case 'admin':
+                    $array['user_type_label'] = 'Administrateur';
+                    break;
+                default:
+                    $array['user_type_label'] = $this->user_type;
+            }
+        } else {
+            $array['user_type_label'] = 'Non défini';
         }
         
         return $array;
